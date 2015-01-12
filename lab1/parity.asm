@@ -18,7 +18,7 @@ prompt:
 	.asciiz " Enter an integer: "
 
 sumText: 
-	.asciiz " \n Sum = "
+	.asciiz " \n Parity = "
 
 #Text Area (i.e. instructions)
 .text
@@ -46,16 +46,36 @@ main:
 	ori     $v0, $0, 5
 	syscall
 
+   sra     $v1, $v0, 16
+   xor     $v0, $v0, $v1
+
+   sra     $v1, $v0, 8
+   xor     $v0, $v0, $v1
+
+   sra     $v1, $v0, 4
+   xor     $v0, $v0, $v1
+
+   andi    $v0, $v0, 0xF
+
+   and     $a1, $0, $a1
+   addi    $a1, $a1, 0x6996
+   sra     $v0, $a1, $v0
+   andi    $v0, $v0, 1
+
+   and     $v1, $v1, $0
+   add     $v1, $v0, $0
 	# Display the sum text
 	ori     $v0, $0, 4
 	lui     $a0, 0x1001
-	ori     $a0, $a0,0x36
+	ori     $a0, $a0,0x43
 	syscall
 
 	# Display the sum
-	# load 1 into $v0 to display an integer
+	# load 1 into $v0 to display an integer`
+   nor     $v1, $v1, $0
+   andi    $v1, $v1, 1
 	ori     $v0, $0, 1
-	add 	  $a0, $s0, $0
+   add     $a0, $v1, $0
 	syscall
 
 	# Exit (load 10 into $v0)
