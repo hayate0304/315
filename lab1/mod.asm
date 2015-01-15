@@ -1,6 +1,27 @@
-# Demo Program
-# 
-#   CPE 315
+# Name: Brandon Leventhal and Lance Boettcher
+# Section: 1
+# Description: This program mods two numbers
+
+
+##include <stdio.h>
+#
+#int main() {
+#   int a;
+#   int b;
+#   int mod;
+#   printf("This program returns the mod of 2 numbers\n");
+#
+#   printf("Input first number: ");
+#   scanf("%d", &a);
+#
+#   printf("\nInput second number: ");
+#   scanf("%d", &b);
+#
+#   b = b - 1;
+#   mod = a & b;
+#
+#   printf("\nMod is: %d\n", mod);
+#}
 
 
 # declare global so programmer can see actual addresses.
