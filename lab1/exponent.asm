@@ -100,11 +100,16 @@ main:
 	syscall
 	# $v0 now has the value of the second integer
 
-
    # s0 has first value and s1 has second value
    addu     $s1, $0, $v0
 
+   bne      $s1, $0, notzero
+   addi     $s1, $s1, 1
+   j        endResult
+
+
    # set up arguments for subroutine
+notzero:
    addu $a0, $s0, $0
    addu $a1, $s1, $0
    jal  exponent
@@ -112,7 +117,8 @@ main:
    # s1 is the result of the exponentiation
    add  $s1, $v0, $0
 
-	# Display the result
+endResult:
+	# Display the result message
 	ori     $v0, $0, 4
 	lui     $a0, 0x1001
 	ori     $a0, $a0,0x48
@@ -144,15 +150,6 @@ exponent:
    addu    $s0, $a0, $0
    addu    $s1, $a0, $0
    addu    $s2, $a1, $0
-
-   # if equal then return 1
-   bne     $a1, $0, continue
-   addi    $v0, $0, 1
-   addi    $sp, $sp, 20
-   # unaltered so jump straight back
-   jr      $ra
-
-
 
 continue:
    addi    $s3, $0, 1
