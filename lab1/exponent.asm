@@ -151,7 +151,6 @@ exponent:
    addu    $s1, $a0, $0
    addu    $s2, $a1, $0
 
-continue:
    addi    $s3, $0, 1
 
 loop:
