@@ -3,8 +3,10 @@ import java.util.*;
 
 public class lab2 {
 
-   private static final String[] INSTRUCTIONS = {"and", "or", "add", "addi", "sll", "sub", "slt", "beq", "bne", "lw", "sw", "j", "jr", "jal"};
-
+   private static ArrayList<String> I_INSTRUCTIONS = new ArrayList<>(Arrays.asList("addi", "beq", "bne", "lw", "sw"));
+   private static ArrayList<String> R_INSTRUCTIONS = new ArrayList<>(Arrays.asList("and", "or", "add", "sll", "sub", "slt"));
+   private static ArrayList<String> J_INSTRUCTIONS = new ArrayList<>(Arrays.asList("j", "jr", "jal"));
+   
    private static final String[] REGISTERS = {"$s0"};
 
    public static void main(String args[]) {
@@ -28,7 +30,6 @@ public class lab2 {
          System.out.println("File not found");
          return;
       }
-
 
       while(sc.hasNextLine()) {
          String asmLine = sc.nextLine();
@@ -66,17 +67,75 @@ public class lab2 {
       fmtedAsm = fmtedAsm.replaceAll("\n ", "\n");
 
 
-      System.out.println(fmtedAsm);
+     // System.out.println("FMT ASM: \n" + fmtedAsm);
       translateAssembly(fmtedAsm, labels);
    }
 
    private static void translateAssembly(String fmtedAsm, HashMap<String, Integer> labels) {
       Scanner sc = new Scanner(fmtedAsm);
       Scanner line;
+      int lineNum = 0;
+      
       while(sc.hasNextLine()) {
          String nextline = sc.nextLine();
          line = new Scanner(nextline);
-         System.out.println(line.next());
+         
+         String instruction = line.next().trim();
+         
+         ArrayList<String> arguments = new ArrayList<String>();
+         
+         while(line.hasNext()) {
+    		 arguments.add(line.next().replace(",", ""));
+    	 }
+
+         if(R_INSTRUCTIONS.contains(instruction)) {
+        	 if(arguments.size() != 3) {
+        		 //Invalid Instruction?
+        	 }
+        	 
+        	 String rd = arguments.get(0);
+        	 String rs = arguments.get(1);
+        	 String rt = arguments.get(2);
+        	 
+        	 String opcode = "";
+        	 String shamt = "";
+        	 String funct = "";
+        	 
+        	 rFormatPrinter(opcode, rs, rt, rd, shamt, funct);
+         }
+         
+         else if(I_INSTRUCTIONS.contains(instruction)) {
+        	 if(arguments.size() != 3) {
+        		 //Invalid Instruction?
+        	 }
+        	 
+        	 String rt = arguments.get(0);
+        	 String rs = arguments.get(1);
+        	 String imm = arguments.get(2);
+        	 
+        	 String opcode = "";
+        	 
+        	 iFormatPrinter(opcode, rs, rt, imm);
+         }
+         
+         else if(J_INSTRUCTIONS.contains(instruction)) {
+        	 if(arguments.size() != 1) {
+        		 //Invalid Instruction?
+        	 }
+        	 
+        	 String address = arguments.get(0);
+        	 
+        	 String opcode = "";
+        	 
+        	 jFormatPrinter(opcode, address);
+         }
+         
+         else {
+        	 //Unknown Instruction
+        	 System.out.println("Bad Instruction: " + nextline + "\nOn Line: " + lineNum);
+         }
+         
+         lineNum++;
       }
    }
 
@@ -107,7 +166,8 @@ public class lab2 {
 
    private static void iFormatPrinter(String opcode, String rs, String rt,
          String imm) {
-
+	   
+	   System.out.println(opcode + rs + rt + imm);
    }
 
    private static void jFormatPrinter(String opcode, String address) {
