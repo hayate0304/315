@@ -429,7 +429,7 @@ public class lab3 {
 		System.out.println("c = clear all registers, memory, and the program counter to 0");
 		System.out.println("q = exit the program\n");
 	}
-	
+
 	private static void printRegisters() {
 		String output = "\npc = " + pc + "\n"
 				+ "$0 = " + registers.get("$0") + "          $v0 = " + registers.get("$v0") + "         $v1 = " + registers.get("$v1") + "         $a0 = " + registers.get("$a0") + "\n"
@@ -439,7 +439,7 @@ public class lab3 {
 				+ "$s1 = " + registers.get("$s1") + "         $s2 = " + registers.get("$s2") + "         $s3 = " + registers.get("$s3") + "         $s4 = " + registers.get("$s4") + "\n"
 				+ "$s5 = " + registers.get("$s5") + "         $s6 = " + registers.get("$s6") + "         $s7 = " + registers.get("$s7") + "         $t8 = " + registers.get("$t8") + "\n"
 				+ "$t9 = " + registers.get("$t9") + "         $sp = " + registers.get("$sp") + "         $ra = " + registers.get("$ra") + "\n";
-		
+
 		System.out.println(output);
 	}
 
@@ -447,31 +447,31 @@ public class lab3 {
 		for(int i=0; i<numSteps; i++) {
 			step();
 		}
-		
+
 		System.out.println("\t" + numSteps + " instruction(s) executed");
 	}
-	
+
 	private static void step() {
 		Instruction i = program.get(pc);
 		String instruction = i.getInstruction();
-		
+
 		//Uncomment if you want to see the Instruction being executed
 		System.out.println(i.toString());
-		
+
 		ImmediateInstruction ii = null;
 		RegisterInstruction ri = null;
 		JumpInstruction ji = null;
 		int rs;
 		int rt;
-		
+
 		switch(instruction) {
 			case "addi":
 				ii = (ImmediateInstruction)i;
-				
+
 				rs = registers.get(ii.rs);
-				
+
 				registers.put(ii.rt, (rs + ii.imm));
-				
+
 				pc++;
 				
 				break;
@@ -491,7 +491,7 @@ public class lab3 {
 				break;
 			case "bne":
 				ii = (ImmediateInstruction)i;
-				
+
 				rs = registers.get(ii.rs);
 				rt = registers.get(ii.rt);
 				
@@ -519,7 +519,7 @@ public class lab3 {
 				rs = registers.get(ii.rs);
 				rt = registers.get(ii.rt);
 				
-				memory[rs] = rt;
+				memory[rs + ii.imm] = rt;
 				
 				pc++;
 				
