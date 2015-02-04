@@ -75,7 +75,6 @@ public class lab3 {
 
 		if (args.length == 2) {
 			mode = "s";
-			System.out.println("Script Mode");
 			File script = new File(args[1]);
 			try {
 				linesc = new Scanner(script);
@@ -85,13 +84,15 @@ public class lab3 {
 			}
 		} else {
 			mode = "i";
-			System.out.println("Interactive Mode");
-			System.out.print("mips> ");
 			linesc = new Scanner(System.in);
 		}
+		System.out.print("mips> ");
 
 		while (linesc.hasNextLine()) {
 			String line = linesc.nextLine();
+         if (mode.equals("s")) {
+            System.out.println(line);
+         }
 			Scanner tokens = new Scanner(line);
 			String command = tokens.next();
 
@@ -107,9 +108,9 @@ public class lab3 {
 					step(tokens.nextInt());
 				} else {
 					step();
+               System.out.println("1 instruction(s) executed");
 				}
 			} else if (command.equals("r")) {
-				System.out.println("Finishing program");
 				while(pc < program.size()) {
 					step();
 				}
@@ -125,9 +126,9 @@ public class lab3 {
 			}
 
 			tokens.close();
-			if (mode.equals("i")) {
+			//if (mode.equals("i")) {
 				System.out.print("mips> ");
-			}
+			//}
 		}
 		linesc.close();
 	}
@@ -456,7 +457,7 @@ public class lab3 {
 		String instruction = i.getInstruction();
 
 		//Uncomment if you want to see the Instruction being executed
-		System.out.println(i.toString());
+		//System.out.println(i.toString());
 
 		ImmediateInstruction ii = null;
 		RegisterInstruction ri = null;
@@ -506,9 +507,9 @@ public class lab3 {
 			case "lw": 
 				ii = (ImmediateInstruction)i;
 				
-				rt = registers.get(ii.rt);
+				rs = registers.get(ii.rs);
 				
-				registers.put(ii.rs, memory[rt]);
+				registers.put(ii.rt, memory[rs + ii.imm]);
 				
 				pc++;
 				
@@ -610,7 +611,7 @@ public class lab3 {
 				break;	
 			case "jr": 								
 				pc = registers.get("$ra");
-				System.out.println("PC = " + pc);
+				//System.out.println("PC = " + pc);
 				break;		
 		}
 		
