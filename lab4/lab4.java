@@ -9,6 +9,7 @@ public class lab4 {
 	private static int pc = 0;
    private static String[] pipeline = new String[4];
    private static int emulatorpc = 0;
+   private static int temppc = 0;
    // Start in an out of bounds position
    private static String memoryLastLoaded = "";
 
@@ -168,6 +169,7 @@ public class lab4 {
          pipeline[0] = "squash";
 
          squash = false;
+         pc = temppc;
       } else if (multSquash > 0) {
          if (multSquash == 1) {
             pipeline[3] = pipeline[2];
@@ -185,6 +187,7 @@ public class lab4 {
             pipeline[2] = pipeline[1];
             pipeline[1] = pipeline[0];
             pipeline[0] = program.get(pc).getInstruction();
+            pc++;
          }
          multSquash--;
       } else {
@@ -375,19 +378,22 @@ public class lab4 {
 
 			case "j":
 				ji = (JumpInstruction)i;
-				pc = ji.address;
+				temppc = ji.address;
             squash = true;
+            pc++;
 				break;
 
 			case "jal":
 				ji = (JumpInstruction)i;
 				registers.put("$ra", (pc + 1));
-				pc = ji.address;
+				temppc = ji.address;
             squash = true;
+            pc++;
 				break;
 			case "jr":
-				pc = registers.get("$ra");
+				temppc = registers.get("$ra");
             squash = true;
+            pc++;
 				break;
 		}
 	}
