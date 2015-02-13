@@ -7,8 +7,10 @@ public class lab4 {
 
 	private static int[] memory = new int[8192];
 	private static int pc = 0;
-   private static int emulatorpc = 0;
    private static String[] pipeline = new String[4];
+   private static int emulatorpc = 0;
+   // Start in an out of bounds position
+   private static String memoryLastLoaded = "";
 
    // Flags
    private static String mode;
@@ -27,6 +29,8 @@ public class lab4 {
    private static int instructionCount = 0;
    private static int cycleCount = 0;
 
+   private static final int BRANCH_SQUASH = 3;
+
 
    public static void main(String args[]) {
       Scanner linesc;
@@ -34,6 +38,7 @@ public class lab4 {
       Formatter formatter = new Formatter(args[0]);
       program = formatter.getProgram();
       labels = formatter.getLabels();
+      registers = formatter.getRegisters();
       initPipeLine();
 
       if (args.length == 2) {
@@ -74,8 +79,7 @@ public class lab4 {
 
          if (command.equals("q")) {
             tokens.close();
-            //return;
-            break; // this might need to be changed, not sure yet
+            break;
          } else if (command.equals("h")) {
             printHelp();
          } else if (command.equals("d")) {
@@ -84,14 +88,19 @@ public class lab4 {
             printPipeLine();
          } else if (command.equals("s")) {
             if (tokens.hasNextInt()) {
-               // step(tokens.nextInt());
+               step(tokens.nextInt());
             } else {
-               // step(0) or step()
+               step();
+               printPipeLine();
             }
          } else if (command.equals("r")) {
-            //while (pc < program.size()) {
-               //step();
-            //}
+            while (pc < program.size() || stall == true) {
+               step();
+            }
+            // In a real mips processor the pipeline will empty before
+            // finishing
+            cycleCount = cycleCount + 4;
+            printStats();
          } else if (command.equals("m")) {
             int start = tokens.nextInt();
             int stop = tokens.nextInt();
@@ -143,20 +152,22 @@ public class lab4 {
 
    private static void step() {
 
-      if (squash == true)  {
-         pipeline[3] = pipeline[2];
-         pipeline[2] = pipeline[1];
-         pipeline[1] = pipeline[0];
-         pipeline[0] = "squash";
-         squash = false;
-         cycleCount++;
-      } else if (stall == true) {
+      if (stall == true) {
          pipeline[3] = pipeline[2];
          pipeline[2] = pipeline[1];
          pipeline[1] = "stall";
 
-         cycleCount++;
          stall = false;
+
+         // Set last mem loaded back to out of bounds num
+         memoryLastLoaded = "";
+      }  else if (squash == true) {
+         pipeline[3] = pipeline[2];
+         pipeline[2] = pipeline[1];
+         pipeline[1] = pipeline[0];
+         pipeline[0] = "squash";
+
+         squash = false;
       } else if (multSquash > 0) {
          if (multSquash == 1) {
             pipeline[3] = pipeline[2];
@@ -165,6 +176,8 @@ public class lab4 {
             pipeline[0] = "squash";
 
             // UPDATE PC HERE FOR THE BRANCH CMD
+            // otherwise printing is offset
+            pc = emulatorpc;
 
 
          } else {
@@ -173,20 +186,21 @@ public class lab4 {
             pipeline[1] = pipeline[0];
             pipeline[0] = program.get(pc).getInstruction();
          }
-         cycleCount++;
          multSquash--;
       } else {
          pipeline[3] = pipeline[2];
          pipeline[2] = pipeline[1];
          pipeline[1] = pipeline[0];
          pipeline[0] = program.get(pc).getInstruction();
-         cycleCount++;
-         //simulatorStep();
+         simulatorStep();
       }
+      cycleCount++;
    }
 
    private static void step(int numSteps) {
-
+      for (int i = 0; i < numSteps; i++) {
+         step();
+      }
    }
 
 	private static void simulatorStep() {
@@ -199,12 +213,19 @@ public class lab4 {
 		int rs;
 		int rt;
 
+      instructionCount++;
+
 		switch(instruction) {
 			case "addi":
 				ii = (ImmediateInstruction)i;
 				rs = registers.get(ii.rs);
 				registers.put(ii.rt, (rs + ii.imm));
 				pc++;
+
+            if (setStall(ii.rs)) {
+               stall = true;
+            }
+
 				break;
 
 			case "beq":
@@ -213,12 +234,15 @@ public class lab4 {
 				rt = registers.get(ii.rt);
 
 				if(rs == rt) {
-					pc = ii.imm;
-				}
-				else {
-					pc++;
+					emulatorpc = ii.imm;
+               multSquash = BRANCH_SQUASH;
 				}
 
+            if (setStall(ii.rs, ii.rt)) {
+               stall = true;
+            }
+
+            pc++;
 				break;
 
 			case "bne":
@@ -227,19 +251,29 @@ public class lab4 {
 				rt = registers.get(ii.rt);
 
 				if(rs != rt) {
-					pc = ii.imm;
-				}
-				else {
-					pc++;
+					emulatorpc = ii.imm;
+               multSquash = BRANCH_SQUASH;
 				}
 
+            if (setStall(ii.rs, ii.rt)) {
+               stall = true;
+            }
+
+				pc++;
 				break;
 
 			case "lw":
 				ii = (ImmediateInstruction)i;
 				rs = registers.get(ii.rs);
+            rt = registers.get(ii.rt);
+
+            //System.out.println("\n\nDEBUG LW: rs = " + rs + " ri.rs = " + ii.rs +
+             //     " rt = " + rt + " ri.rt = " + ii.rt + "\n\n");
+
 				registers.put(ii.rt, memory[rs + ii.imm]);
 				pc++;
+
+            memoryLastLoaded = ii.rt;
 				break;
 
 			case "sw":
@@ -248,6 +282,10 @@ public class lab4 {
 				rt = registers.get(ii.rt);
 				memory[rs + ii.imm] = rt;
 				pc++;
+
+            if (setStall(ii.rt)) {
+               stall = true;
+            }
 				break;
 
 			case "and":
@@ -256,6 +294,10 @@ public class lab4 {
 				rt = registers.get(ri.rt);
 				registers.put(ri.rd, (rs & rt));
 				pc++;
+
+            if (setStall(ri.rs, ri.rt)) {
+               stall = true;
+            }
 				break;
 
 			case "or":
@@ -264,29 +306,52 @@ public class lab4 {
 				rt = registers.get(ri.rt);
 				registers.put(ri.rd, (rs | rt));
 				pc++;
+
+            if (setStall(ri.rs, ri.rt)) {
+               stall = true;
+            }
 				break;
 
 			case "add":
 				ri = (RegisterInstruction)i;
 				rs = registers.get(ri.rs);
 				rt = registers.get(ri.rt);
+
+            //System.out.println("\n\nDEBUG: rs = " + rs + " ri.rs = " + ri.rs +
+             //     " rt = " + rt + " ri.rt = " + ri.rt + "\n\n");
 				registers.put(ri.rd, (rs + rt));
 				pc++;
+
+            if (setStall(ri.rs, ri.rt)) {
+               stall = true;
+            }
+
 				break;
 
 			case "sll":
 				ri = (RegisterInstruction)i;
 				rs = registers.get(ri.rs);
+            rt = registers.get(ri.rt);
 				registers.put(ri.rd, (rs << ri.shamt));
 				pc++;
+
+            if (setStall(ri.rt)) {
+               stall = true;
+            }
 				break;
 
 			case "sub":
 				ri = (RegisterInstruction)i;
 				rs = registers.get(ri.rs);
 				rt = registers.get(ri.rt);
+
+            if (setStall(ri.rs, ri.rt)) {
+               stall = true;
+            }
+
 				registers.put(ri.rd, (rs - rt));
 				pc++;
+
 				break;
 
 			case "slt":
@@ -302,23 +367,27 @@ public class lab4 {
 				}
 
 				pc++;
+
+            if (setStall(ri.rs, ri.rt)) {
+               stall = true;
+            }
 				break;
 
 			case "j":
 				ji = (JumpInstruction)i;
-            // probably need temp pc
 				pc = ji.address;
+            squash = true;
 				break;
 
 			case "jal":
 				ji = (JumpInstruction)i;
 				registers.put("$ra", (pc + 1));
-            // Might need temp pc here to keep printing correct
 				pc = ji.address;
+            squash = true;
 				break;
 			case "jr":
-            // same as above, temp pc
 				pc = registers.get("$ra");
+            squash = true;
 				break;
 		}
 	}
@@ -357,7 +426,29 @@ public class lab4 {
          cpi = cycleCount / (double)instructionCount;
       }
 
-      System.out.println("CPI = " + cpi + "\tCycles = " + cycleCount + "\tInstructions = " + instructionCount);
+      String cpiThreeDecimal = String.format("%.3f", cpi);
+      System.out.println("CPI = " + cpiThreeDecimal + "\tCycles = " + cycleCount + "\tInstructions = " + instructionCount);
+      System.out.println();
+   }
+
+   private static boolean setStall(String reg1, String reg2) {
+      if (reg1.equals(memoryLastLoaded)) {
+         return true;
+      }
+
+      if (reg2.equals(memoryLastLoaded)) {
+         return true;
+      }
+
+      return false;
+   }
+
+   private static boolean setStall(String reg) {
+      if (reg.equals(memoryLastLoaded)) {
+         return true;
+      }
+
+      return false;
    }
 }
 
