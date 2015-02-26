@@ -1,18 +1,32 @@
+// Authors Lance Boettcher and Brandon Leventhal
 import java.io.*;
 import java.util.*;
 
 public class lab5 {
 	private static int[] memory = new int[8192];
 	private static int pc = 0;
-	
+
 	private static HashMap<String, Integer> registers = new HashMap<String, Integer>();
 	private static HashMap<String, Integer> labels = new HashMap<String, Integer>();
 	private static ArrayList<String> labelQueue = new ArrayList<String>();
 	private static ArrayList<Instruction> program = new ArrayList<Instruction>();
-	
+
 	private static ArrayList<String> R_INSTRUCTIONS = new ArrayList<String>();
 	private static ArrayList<String> I_INSTRUCTIONS = new ArrayList<String>();
 	private static ArrayList<String> J_INSTRUCTIONS = new ArrayList<String>();
+
+   // Branch Predictor Data Structures
+   private static final int ST = 3;
+   private static final int WT = 2;
+   private static final int WNT = 1;
+   private static final int SNT = 0;
+   // Pattern History Table
+   private static int[] PHT;
+   // Global History Register
+   private static int[] GHR;
+   private static int ghr;
+   private static int predictionCount;
+   private static int correctPredictions;
 
 	static {
 		registers.put("$0", 0);
@@ -48,7 +62,7 @@ public class lab5 {
 
 		registers.put("$sp", 0);
 		registers.put("$ra", 0);
-		
+
 		I_INSTRUCTIONS.add("addi");
 		I_INSTRUCTIONS.add("beq");
 		I_INSTRUCTIONS.add("bne");
@@ -64,7 +78,7 @@ public class lab5 {
 		R_INSTRUCTIONS.add("jr");
 
 		J_INSTRUCTIONS.add("j");
-		J_INSTRUCTIONS.add("jal");	
+		J_INSTRUCTIONS.add("jal");
 	}
 
 	public static void main(String args[]) {
@@ -73,7 +87,8 @@ public class lab5 {
 
 		initASM(args[0]);
 
-		if (args.length == 2) {
+
+		if (args.length == 3) {
 			mode = "s";
 			File script = new File(args[1]);
 			try {
@@ -82,10 +97,35 @@ public class lab5 {
 				System.out.println("Error reading script file");
 				return;
 			}
+         try {
+            ghr = Integer.parseInt(args[2]);
+         } catch (Exception e) {
+            System.out.println("Error reading GHR Size");
+            return;
+         }
+		} else if (args.length == 2) {
+         try {
+            ghr = Integer.parseInt(args[1]);
+			   mode = "i";
+			   linesc = new Scanner(System.in);
+         } catch (Exception e) {
+            ghr = 2;
+            mode = "s";
+            File script = new File(args[1]);
+            try {
+               linesc = new Scanner(script);
+            } catch (FileNotFoundException f) {
+               System.out.println("Error reading script file");
+               return;
+            }
+         }
 		} else {
-			mode = "i";
-			linesc = new Scanner(System.in);
-		}
+         mode = "i";
+         linesc = new Scanner(System.in);
+         ghr = 2;
+      }
+
+      initBP();
 		System.out.print("mips> ");
 
 		while (linesc.hasNextLine()) {
@@ -123,7 +163,9 @@ public class lab5 {
 			} else if (command.equals("p")) {
 				int linenum = tokens.nextInt();
 				System.out.println(program.get(linenum));
-			}
+			} else if (command.equals("b")) {
+            printBranchPredictorAccuracy();
+         }
 
 			tokens.close();
 			//if (mode.equals("i")) {
@@ -477,9 +519,11 @@ public class lab5 {
 
 				if(rs == rt) {
 					pc = ii.imm;
+               BranchPrediction(1);
 				}
 				else {
 					pc++;
+               BranchPrediction(0);
 				}
 
 				break;
@@ -491,9 +535,11 @@ public class lab5 {
 
 				if(rs != rt) {
 					pc = ii.imm;
+               BranchPrediction(1);
 				}
 				else {
 					pc++;
+               BranchPrediction(0);
 				}
 
 				break;
@@ -579,7 +625,6 @@ public class lab5 {
 				break;
 			case "jr":
 				pc = registers.get("$ra");
-				//System.out.println("PC = " + pc);
 				break;
 		}
 	}
@@ -602,4 +647,54 @@ public class lab5 {
 		}
 		pc = 0;
 	}
+
+   /*
+    * Branch Predictor Methods
+    */
+
+   private static void initBP() {
+      PHT = new int[(int)Math.pow(2, ghr)];
+      GHR = new int[ghr];
+      predictionCount = 0;
+   }
+
+   // taken will be 1 for taken and 0 for not taken
+   // just like the book
+   private static void BranchPrediction(int taken) {
+      predictionCount++;
+
+      // Pattern History Table Index, this needs to be calculated
+      int phtIndex = 0;
+
+      for (int i = ghr - 1; i != 0; i--) {
+         phtIndex += GHR[i] * Math.pow(2, i);
+         GHR[i] = GHR[i-1];
+      }
+      // Doesn't hit 0 index in loop
+      phtIndex += GHR[0];
+      GHR[0] = taken;
+
+      int p = PHT[phtIndex];
+
+      if (taken > 0 && PHT[phtIndex] != ST) {
+         PHT[phtIndex] += 1;
+      }
+
+      if (taken == 0 && PHT[phtIndex] != SNT) {
+         PHT[phtIndex] -= 1;
+      }
+
+      if (p >= WT && taken == 1) {
+         correctPredictions += 1;
+      } else if (p <= WNT && taken == 0) {
+         correctPredictions += 1;
+      }
+   }
+
+   private static void printBranchPredictorAccuracy() {
+      String predictionOutput = String.format("accuracy %.2f%% (%d correct predictions, %d predictions)", correctPredictions / (float)predictionCount * 100, correctPredictions, predictionCount);
+      System.out.println();
+      System.out.println(predictionOutput);
+      System.out.println();
+   }
 }

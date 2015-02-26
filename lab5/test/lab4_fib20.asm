@@ -1,7 +1,9 @@
 # compute fibonacci numbers
-# the sixth number is stored in $v0 when the program completes
+#
+# 20th fibonacci number = 6765
+# CPI = 1.409	cycles = 209704	instructions = 148818
 
-addi $a0, $0, 6	# input argument
+addi $a0, $0, 20	# input argument
 addi $sp, $0, 4095	# initialize stack pointer
 jal fibonacci
 j end
