@@ -165,6 +165,8 @@ public class lab5 {
 				System.out.println(program.get(linenum));
 			} else if (command.equals("b")) {
             printBranchPredictorAccuracy();
+         } else if (command.equals("o")) {
+            outputCoordinatesFile();
          }
 
 			tokens.close();
@@ -256,7 +258,7 @@ public class lab5 {
 				if (instruction.equals("sll")) {
 					if (arguments.size() == 3) {
 						rd = arguments.get(0);
-						rt = arguments.get(1);
+						rs = arguments.get(1);
 						
 						try {
 							shamt = Integer.parseInt(arguments.get(2));
@@ -267,7 +269,7 @@ public class lab5 {
 											+ nextline + "'", lineNum);
 						}
 
-						if (!(registers.containsKey(rd) && registers.containsKey(rt))) {
+						if (!(registers.containsKey(rd) && registers.containsKey(rs))) {
 							throw new InvalidAssemblyException(
 									"Invalid Instruction, Unsupported Register: '"
 											+ nextline + "'", lineNum);
@@ -300,7 +302,6 @@ public class lab5 {
 						rd = arguments.get(0);
 						rs = arguments.get(1);
 						rt = arguments.get(2);
-
 						if (!(registers.containsKey(rd) && registers.containsKey(rs) && registers.containsKey(rt))) {
 							throw new InvalidAssemblyException(
 									"Invalid Instruction, Unsupported Register: '"
@@ -497,7 +498,7 @@ public class lab5 {
 	private static void step() {
 		Instruction i = program.get(pc);
 		String instruction = i.getInstruction();
-
+		
 		ImmediateInstruction ii = null;
 		RegisterInstruction ri = null;
 		JumpInstruction ji = null;
@@ -696,5 +697,34 @@ public class lab5 {
       System.out.println();
       System.out.println(predictionOutput);
       System.out.println();
+   }
+   
+   private static void outputCoordinatesFile() {
+      String content = "";
+      int i = 0;
+      
+      while(memory[i] != 0) {
+         content += memory[i] + "," + memory[i+1] + "\n";
+         
+         i = i + 2;
+      }
+            
+      try {
+
+         File file = new File("coordinates.csv");
+ 
+         // if file doesnt exists, then create it
+         if (!file.exists()) {
+            file.createNewFile();
+         }
+ 
+         FileWriter fw = new FileWriter(file.getAbsoluteFile());
+         BufferedWriter bw = new BufferedWriter(fw);
+         bw.write(content);
+         bw.close();
+  
+      } catch (IOException e) {
+         e.printStackTrace();
+      }
    }
 }
