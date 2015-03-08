@@ -25,7 +25,7 @@ public class lab6 {
       run(filename, 2048, 2, 1);
       run(filename, 2048, 4, 1);
       run(filename, 2048, 4, 4);
-      run(filename, 2048, 1, 1);
+      run(filename, 4096, 1, 1);
                   
    }
    
