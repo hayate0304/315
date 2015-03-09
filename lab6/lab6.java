@@ -8,7 +8,7 @@ import java.util.Scanner;
 
 public class lab6 {
    
-   private static int[][][] cache;
+   private static CacheEntry[][][] cache;
    
    //Used for printing the results
    private static int hits = 0;
@@ -25,7 +25,7 @@ public class lab6 {
       run(filename, 2048, 2, 1);
       run(filename, 2048, 4, 1);
       run(filename, 2048, 4, 4);
-      run(filename, 2048, 1, 1);
+      run(filename, 4096, 1, 1);
                   
    }
    
@@ -33,9 +33,18 @@ public class lab6 {
       int cacheLength = (cacheSize/(blockLength * 16));
       
       //Initialize everything
-      cache = new int[mapping][cacheLength][blockLength];
       hits = 0;
       totalAddresses = 0;
+      cache = new CacheEntry[mapping][cacheLength][blockLength];
+      
+      //Fill the cache with zeros and invalids
+      for(int i=0; i<cache.length; i++) {
+         for(int j=0; j<cache[i].length; j++) {
+            for(int q=0; q<cache[i][j].length; q++) {
+               cache[i][j][q] = new CacheEntry();
+            }
+         }
+      }
       
       Scanner addressScanner;
       File addressFile = new File(fileName);
@@ -71,6 +80,7 @@ public class lab6 {
       
       printResults(cacheSize, mapping, blockLength);
       cacheNumber++;
+      
       addressScanner.close();
    }
    
@@ -78,20 +88,21 @@ public class lab6 {
 
       int blockOffset = (address.index % blockLength);
       int index = ((address.index/blockLength) % cacheLength);
-      
+
       boolean found = false;
             
       //Check for a hit
       outerLoop:
       for(int i=0; i<cache.length; i++) {
          for(int q=0; q<blockLength; q++) {
-            if(cache[i][index][q] == address.index) {
+            if((cache[i][index][q].value == address.index) && (cache[i][index][q].valid)) {
                found = true;
                hits++;
                
                //Move the way to the front of the array if not already there
+               //The most recently used way should always be at the front of the array
                if((cache.length > 1) && (i != 0)) {
-                  int[] tempRow = cache[0][index];
+                  CacheEntry[] tempRow = cache[0][index];
                   cache[0][index] = cache[i][index];
                   
                   for(int j=1; j<cache.length; j++) {
@@ -109,50 +120,39 @@ public class lab6 {
       
       //No hit, Update the cache
       if(!found) {
-         boolean full = true;
+         CacheEntry[] tempRow = cache[0][index];
+         fillRow(0, index, blockOffset, address.index);
          
-         for(int i=0; i<cache.length; i++) {
-            if(cache[i][index][blockOffset] == 0) {
-               fillRow(i, index, blockOffset, address.index);
-               full = false;
-               break;
-            }
-         }
-         
-         if(full) {
-            int[] tempRow = cache[0][index];
-            fillRow(0, index, blockOffset, address.index);
+         for(int j=1; j<cache.length; j++) {
+            cache[j][index] = tempRow;
             
-            for(int j=1; j<cache.length; j++) {
-               cache[j][index] = tempRow;
-               
-               if(j < (cache.length-1))
-                  tempRow = cache[j+1][index];
+            if(j < (cache.length-1)) {
+               tempRow = cache[j+1][index];
             }
          }
       }
       
       //Uncomment these for debugging
-      System.out.println(address.toString());
+   /*   System.out.println(address.toString());
       System.out.println("Index: " + index + " Hits: " + hits);
       printCache();
-     
+     */
    }
    
-   //Fill a single way. For example, fill the array at cache[32][43] with all the values near "value"
+   //Fill a single way. For example, fill the array at cache[0][43] with all the values near "value"
    private static void fillRow(int mapping, int index, int blockOffset, int value) {
-      cache[mapping][index][blockOffset] = value;
+      cache[mapping][index][blockOffset] = new CacheEntry(value);
       
       int tempIndex = value;
       for(int i=(blockOffset+1); i<cache[mapping][index].length; i++) {
          tempIndex = tempIndex + 1;
-         cache[mapping][index][i] = tempIndex;
+         cache[mapping][index][i] = new CacheEntry(tempIndex);
       }
       
       tempIndex = value;
       for(int i=(blockOffset-1); i>-1; i--) {
          tempIndex = tempIndex - 1;
-         cache[mapping][index][i] = tempIndex;
+         cache[mapping][index][i] = new CacheEntry(tempIndex);
       }
    }
    
@@ -182,9 +182,9 @@ public class lab6 {
    //Just for debugging. Only prints nonzero cache entries
    private static void printCache() {
       int q = 0;
-      for (int[] row : cache[0])
+      for (CacheEntry[] row : cache[0])
       {
-         if(row[0] != 0) {
+         if(row[0].valid) {
             System.out.print(q + ": " + Arrays.toString(row));
                         
             for(int i=1; i<cache.length; i++) {
@@ -212,6 +212,25 @@ public class lab6 {
       
       public String toString() {
          return "tag: " + tag + " index: " + index + " blockOffset: " + blockOffset + " byteOffset: " + byteOffset;
+      }
+   }
+   
+   private static class CacheEntry {
+      int value = 0; 
+      boolean valid = false;
+      
+      public CacheEntry() {
+         this.value = 0;
+         this.valid = false;
+      }
+      
+      public CacheEntry(int value) {
+         this.value = value;
+         this.valid = true;
+      }
+      
+      public String toString() {
+         return String.valueOf(value);
       }
    }
 
