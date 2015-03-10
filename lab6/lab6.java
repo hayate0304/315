@@ -19,18 +19,18 @@ public class lab6 {
       
       String filename = args[0];
       
-      run(filename, 2048, 1, 1);
+    //  run(filename, 2048, 1, 1);
       run(filename, 2048, 1, 2);
-      run(filename, 2048, 1, 4);
+     /* run(filename, 2048, 1, 4);
       run(filename, 2048, 2, 1);
       run(filename, 2048, 4, 1);
       run(filename, 2048, 4, 4);
       run(filename, 4096, 1, 1);
-                  
+                  */
    }
    
    private static void run(String fileName, int cacheSize, int mapping, int blockLength) {
-      int cacheLength = (cacheSize/(blockLength * 16));
+      int cacheLength = (cacheSize/((blockLength * 16) * mapping));
       
       //Initialize everything
       hits = 0;
@@ -46,6 +46,11 @@ public class lab6 {
          }
       }
       
+      int blockOffsetLength = (blockLength / 2);
+      if (blockLength == 1) { 
+         blockOffsetLength = 0;   //Direct Mapped
+      }
+            
       Scanner addressScanner;
       File addressFile = new File(fileName);
 
@@ -58,20 +63,19 @@ public class lab6 {
 
       while (addressScanner.hasNextLine()) {
          Scanner lineScanner = new Scanner(addressScanner.nextLine());
-         
+
          //Skip the integer
          lineScanner.nextInt();
                   
-         String binaryAddress = intToBinaryString(Integer.parseInt(lineScanner.next(), 16), 32);
+         //Get the hex as an integer
+         int hex = lineScanner.nextInt(16);
+                  
+         int index = hex << (18 - blockOffsetLength); 
+         index = index >>> (20);
 
-         int byteOffset = Integer.parseInt(binaryAddress.substring(30, 32), 2);
-         int blockOffset = Integer.parseInt(binaryAddress.substring(28, 30), 2);         
-         int index = Integer.parseInt(binaryAddress.substring(16, 28), 2);
-         int tag = Integer.parseInt(binaryAddress.substring(0, 16), 2);
-
-         Address address = new Address(tag, index, blockOffset, byteOffset);
-         
-         cacheAddress(address, cacheLength, blockLength);
+         int tag = hex >>> (14 + blockOffsetLength);
+               
+         cacheAddress(index, tag, cacheLength, blockLength);
          
          totalAddresses++;
            
@@ -84,10 +88,12 @@ public class lab6 {
       addressScanner.close();
    }
    
-   private static void cacheAddress(Address address, int cacheLength, int blockLength) {
+   private static void cacheAddress(int index, int tag, int cacheLength, int blockLength) {
 
-      int blockOffset = (address.index % blockLength);
-      int index = ((address.index/blockLength) % cacheLength);
+      System.out.println("Tag: " + tag + " Index: " + index);
+      
+      int blockOffset = (index % blockLength);
+      index = ((index/blockLength) % cacheLength);
 
       boolean found = false;
             
@@ -95,7 +101,7 @@ public class lab6 {
       outerLoop:
       for(int i=0; i<cache.length; i++) {
          for(int q=0; q<blockLength; q++) {
-            if((cache[i][index][q].value == address.index) && (cache[i][index][q].valid)) {
+            if((cache[i][index][q].value == tag) && (cache[i][index][q].valid)) {
                found = true;
                hits++;
                
@@ -121,7 +127,7 @@ public class lab6 {
       //No hit, Update the cache
       if(!found) {
          CacheEntry[] tempRow = cache[0][index];
-         fillRow(0, index, blockOffset, address.index);
+         fillRow(0, index, blockOffset, tag);
          
          for(int j=1; j<cache.length; j++) {
             cache[j][index] = tempRow;
@@ -133,10 +139,9 @@ public class lab6 {
       }
       
       //Uncomment these for debugging
-   /*   System.out.println(address.toString());
-      System.out.println("Index: " + index + " Hits: " + hits);
+      System.out.println("Mod Index: " + index + " Hits: " + hits);
       printCache();
-     */
+     
    }
    
    //Fill a single way. For example, fill the array at cache[0][43] with all the values near "value"
@@ -194,24 +199,6 @@ public class lab6 {
             System.out.print("\n");
          }
          q++;  
-      }
-   }
-   
-   private static class Address {
-      int tag;
-      int index;
-      int blockOffset;
-      int byteOffset;
-      
-      public Address(int tag, int index, int blockOffset, int byteOffset) {
-         this.tag = tag;
-         this.index = index;
-         this.blockOffset = blockOffset;
-         this.byteOffset = byteOffset;
-      }
-      
-      public String toString() {
-         return "tag: " + tag + " index: " + index + " blockOffset: " + blockOffset + " byteOffset: " + byteOffset;
       }
    }
    
