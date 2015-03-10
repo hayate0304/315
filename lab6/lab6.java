@@ -19,14 +19,14 @@ public class lab6 {
       
       String filename = args[0];
       
-    //  run(filename, 2048, 1, 1);
+      run(filename, 2048, 1, 1);
       run(filename, 2048, 1, 2);
-     /* run(filename, 2048, 1, 4);
+      run(filename, 2048, 1, 4);
       run(filename, 2048, 2, 1);
       run(filename, 2048, 4, 1);
       run(filename, 2048, 4, 4);
       run(filename, 4096, 1, 1);
-                  */
+                  
    }
    
    private static void run(String fileName, int cacheSize, int mapping, int blockLength) {
@@ -90,7 +90,7 @@ public class lab6 {
    
    private static void cacheAddress(int index, int tag, int cacheLength, int blockLength) {
 
-      System.out.println("Tag: " + tag + " Index: " + index);
+  //    System.out.println("Tag: " + tag + " Index: " + index);
       
       int blockOffset = (index % blockLength);
       index = ((index/blockLength) % cacheLength);
@@ -139,25 +139,32 @@ public class lab6 {
       }
       
       //Uncomment these for debugging
-      System.out.println("Mod Index: " + index + " Hits: " + hits);
-      printCache();
+    //  System.out.println("Mod Index: " + index + " Hits: " + hits);
+    //  printCache();
      
    }
    
-   //Fill a single way. For example, fill the array at cache[0][43] with all the values near "value"
-   private static void fillRow(int mapping, int index, int blockOffset, int value) {
-      cache[mapping][index][blockOffset] = new CacheEntry(value);
+   //Fill a single way
+   private static void fillRow(int mapping, int index, int blockOffset, int tag) {
+  /*    cache[mapping][index][blockOffset] = new CacheEntry(tag);
       
-      int tempIndex = value;
+      tempValue = tag;
       for(int i=(blockOffset+1); i<cache[mapping][index].length; i++) {
-         tempIndex = tempIndex + 1;
-         cache[mapping][index][i] = new CacheEntry(tempIndex);
+         tempValue = tempValue + 1;
+         cache[mapping][index][i] = new CacheEntry(tempValue);
       }
       
-      tempIndex = value;
+      tempValue = tag;
       for(int i=(blockOffset-1); i>-1; i--) {
-         tempIndex = tempIndex - 1;
-         cache[mapping][index][i] = new CacheEntry(tempIndex);
+         tempValue = tempValue - 1;
+         cache[mapping][index][i] = new CacheEntry(tempValue);
+      }
+      */
+      
+      //Not sure what to fill in the rest of the way with
+      
+      for(int i=0; i<cache[mapping][index].length; i++) {
+         cache[mapping][index][i] = new CacheEntry(tag);
       }
    }
    
