@@ -33,7 +33,7 @@ public class lab6 {
    }
    
    private static void run(String fileName, int cacheSize, int mapping, int blockLength) {
-      int cacheLength = (cacheSize/((blockLength * 16) * mapping));
+      int cacheLength = (cacheSize/((blockLength * 4) * mapping));
       
       //Initialize everything
       hits = 0;
@@ -95,7 +95,7 @@ public class lab6 {
       
       int tag = address >>> (indexLength + blockOffsetLength + 2);
 
-//      System.out.println("Tag: " + tag + " Index: " + index);
+   //   System.out.println("Tag: " + tag + " Index: " + index);
       
       int blockOffset = (index % blockLength);
 
@@ -143,8 +143,8 @@ public class lab6 {
       }
       
       //Uncomment these for debugging
- //     System.out.println("Mod Index: " + index + " Hits: " + hits);
- //     printCache();
+   //   System.out.println("Mod Index: " + index + " Hits: " + hits);
+   //   printCache();
      
    }
    
