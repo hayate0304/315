@@ -14,6 +14,9 @@ public class lab6 {
    private static int hits = 0;
    private static int totalAddresses = 0;  
    private static int cacheNumber = 1; 
+   
+   private static int blockOffsetLength;
+   private static int indexLength;
       
    public static void main(String[] args) {
       
@@ -46,11 +49,13 @@ public class lab6 {
          }
       }
       
-      int blockOffsetLength = (blockLength / 2);
+      blockOffsetLength = (blockLength / 2);
       if (blockLength == 1) { 
          blockOffsetLength = 0;   //Direct Mapped
       }
-            
+      
+      indexLength = (int)(Math.log(cacheLength)/Math.log(2));
+      
       Scanner addressScanner;
       File addressFile = new File(fileName);
 
@@ -68,14 +73,9 @@ public class lab6 {
          lineScanner.nextInt();
                   
          //Get the hex as an integer
-         int hex = lineScanner.nextInt(16);
+         int address = lineScanner.nextInt(16);
                   
-         int index = hex << (18 - blockOffsetLength); 
-         index = index >>> (20);
-
-         int tag = hex >>> (14 + blockOffsetLength);
-               
-         cacheAddress(index, tag, cacheLength, blockLength);
+         cacheAddress(address, cacheLength, blockLength);
          
          totalAddresses++;
            
@@ -88,12 +88,16 @@ public class lab6 {
       addressScanner.close();
    }
    
-   private static void cacheAddress(int index, int tag, int cacheLength, int blockLength) {
+   private static void cacheAddress(int address, int cacheLength, int blockLength) {
+      
+      int index = address << (32 - (indexLength + blockOffsetLength + 2));
+      index = index >>> (32 - indexLength);
+      
+      int tag = address >>> (indexLength + blockOffsetLength + 2);
 
-  //    System.out.println("Tag: " + tag + " Index: " + index);
+//      System.out.println("Tag: " + tag + " Index: " + index);
       
       int blockOffset = (index % blockLength);
-      index = ((index/blockLength) % cacheLength);
 
       boolean found = false;
             
@@ -101,7 +105,7 @@ public class lab6 {
       outerLoop:
       for(int i=0; i<cache.length; i++) {
          for(int q=0; q<blockLength; q++) {
-            if((cache[i][index][q].value == tag) && (cache[i][index][q].valid)) {
+            if((cache[i][index][0].value == tag) && (cache[i][index][0].valid)) {
                found = true;
                hits++;
                
@@ -127,7 +131,7 @@ public class lab6 {
       //No hit, Update the cache
       if(!found) {
          CacheEntry[] tempRow = cache[0][index];
-         fillRow(0, index, blockOffset, tag);
+         fillRow(0, index, blockOffset, tag, address);
          
          for(int j=1; j<cache.length; j++) {
             cache[j][index] = tempRow;
@@ -139,32 +143,25 @@ public class lab6 {
       }
       
       //Uncomment these for debugging
-    //  System.out.println("Mod Index: " + index + " Hits: " + hits);
-    //  printCache();
+ //     System.out.println("Mod Index: " + index + " Hits: " + hits);
+ //     printCache();
      
    }
    
    //Fill a single way
-   private static void fillRow(int mapping, int index, int blockOffset, int tag) {
-  /*    cache[mapping][index][blockOffset] = new CacheEntry(tag);
+   private static void fillRow(int mapping, int index, int blockOffset, int tag, int address) {
+      cache[mapping][index][blockOffset] = new CacheEntry(tag);
       
-      tempValue = tag;
+      int tempAddress = address;
       for(int i=(blockOffset+1); i<cache[mapping][index].length; i++) {
-         tempValue = tempValue + 1;
-         cache[mapping][index][i] = new CacheEntry(tempValue);
+         tempAddress = tempAddress + 1;
+         cache[mapping][index][i] = new CacheEntry(tempAddress >>> (indexLength + blockOffsetLength + 2));
       }
       
-      tempValue = tag;
+      tempAddress = address;
       for(int i=(blockOffset-1); i>-1; i--) {
-         tempValue = tempValue - 1;
-         cache[mapping][index][i] = new CacheEntry(tempValue);
-      }
-      */
-      
-      //Not sure what to fill in the rest of the way with
-      
-      for(int i=0; i<cache[mapping][index].length; i++) {
-         cache[mapping][index][i] = new CacheEntry(tag);
+         tempAddress = tempAddress - 1;
+         cache[mapping][index][i] = new CacheEntry(tempAddress >>> (indexLength + blockOffsetLength + 2));
       }
    }
    
