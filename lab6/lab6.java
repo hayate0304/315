@@ -1,228 +1,140 @@
-package lab6;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.Scanner;
+import java.util.*;
+import java.io.*;
 
 public class lab6 {
-   
-   private static CacheEntry[][][] cache;
-   
-   //Used for printing the results
+   private static int[][][] cache;
    private static int hits = 0;
-   private static int totalAddresses = 0;  
-   private static int cacheNumber = 1; 
-   
+   private static int totalAddresses = 0;
+   private static int cacheNumber = 1;
    private static int blockOffsetLength;
-   private static int indexLength;
-      
-   public static void main(String[] args) {
-      
-      String filename = args[0];
-      
-      run(filename, 2048, 1, 1);
-      run(filename, 2048, 1, 2);
-      run(filename, 2048, 1, 4);
-      run(filename, 2048, 2, 1);
-      run(filename, 2048, 4, 1);
-      run(filename, 2048, 4, 4);
-      run(filename, 4096, 1, 1);
-                  
-   }
-   
-   private static void run(String fileName, int cacheSize, int mapping, int blockLength) {
-      int cacheLength = (cacheSize/((blockLength * 4) * mapping));
-      
-      //Initialize everything
-      hits = 0;
-      totalAddresses = 0;
-      cache = new CacheEntry[mapping][cacheLength][blockLength];
-      
-      //Fill the cache with zeros and invalids
-      for(int i=0; i<cache.length; i++) {
-         for(int j=0; j<cache[i].length; j++) {
-            for(int q=0; q<cache[i][j].length; q++) {
-               cache[i][j][q] = new CacheEntry();
-            }
-         }
-      }
-      
-      blockOffsetLength = (blockLength / 2);
-      if (blockLength == 1) { 
-         blockOffsetLength = 0;   //Direct Mapped
-      }
-      
-      indexLength = (int)(Math.log(cacheLength)/Math.log(2));
-      
-      Scanner addressScanner;
-      File addressFile = new File(fileName);
 
+   public static void main(String args[]) {
+      String filename = args[0];
+      directmap(filename, 2048, 1);
+      directmap(filename, 2048, 2);
+      directmap(filename, 2048, 4);
+      associative(filename, 2048, 2, 1);
+      associative(filename, 2048, 4, 1);
+      associative(filename, 2048, 4, 4);
+      directmap(filename, 4096, 1);
+   }
+
+   public static void directmap(String filename, int cacheSize, int blockLength) {
+      int cacheLength = (cacheSize/(blockLength * 4));
+      setup(cacheLength, blockLength, 1, false);
+      Scanner sc;
       try {
-         addressScanner = new Scanner(addressFile);
+         sc = new Scanner(new File(filename));
       } catch (FileNotFoundException e) {
          System.out.println("Error reading address file");
          return;
       }
 
-      while (addressScanner.hasNextLine()) {
-         Scanner lineScanner = new Scanner(addressScanner.nextLine());
-
-         //Skip the integer
-         lineScanner.nextInt();
-                  
-         //Get the hex as an integer
-         int address = lineScanner.nextInt(16);
-                  
-         cacheAddress(address, cacheLength, blockLength);
-         
+      while (sc.hasNextInt()) {
          totalAddresses++;
-           
-         lineScanner.close();
+         sc.nextInt();
+         int address = sc.nextInt(16);
+         address = address / 4;
+
+         blockOffsetLength = address % blockLength;
+
+         int index = (address/blockLength) % cacheLength;
+
+         if (cache[0][index][blockOffsetLength] != address) {
+            int addressMarker = address - blockOffsetLength;
+            // Fill in neighboring addresses
+            for (int i = 0; i < blockLength; i++) {
+               cache[0][index][i] = addressMarker++;
+            }
+         } else {
+            hits++;
+         }
       }
-      
-      printResults(cacheSize, mapping, blockLength);
+
+      printResults(cacheSize, 1, blockLength);
+      sc.close();
       cacheNumber++;
-      
-      addressScanner.close();
    }
-   
-   private static void cacheAddress(int address, int cacheLength, int blockLength) {
-      
-      int index = address << (32 - (indexLength + blockOffsetLength + 2));
-      index = index >>> (32 - indexLength);
-      
-      int tag = address >>> (indexLength + blockOffsetLength + 2);
 
-   //   System.out.println("Tag: " + tag + " Index: " + index);
-      
-      int blockOffset = (index % blockLength);
+   public static void associative(String filename, int cacheSize, int mapping, int blockLength) {
+      int cacheLength = (cacheSize/((blockLength * 4) * mapping));
+      setup(cacheLength, mapping, 2, true);
 
-      boolean found = false;
-            
-      //Check for a hit
-      outerLoop:
-      for(int i=0; i<cache.length; i++) {
-         for(int q=0; q<blockLength; q++) {
-            if((cache[i][index][0].value == tag) && (cache[i][index][0].valid)) {
-               found = true;
+      Scanner sc;
+      try {
+         sc = new Scanner(new File(filename));
+      } catch (FileNotFoundException e) {
+         System.out.println("Error reading address file");
+         return;
+      }
+
+      while (sc.hasNextInt()) {
+         totalAddresses++;
+         sc.nextInt();
+         int address = sc.nextInt(16);
+         address = address / 4;
+         int index = (address/blockLength) % cacheLength;
+         int tag = address / cacheLength;
+         boolean notFound = true;
+
+         for (int i = 0; i < mapping; i++) {
+            if (cache[0][index][i] == tag) {
                hits++;
-               
-               //Move the way to the front of the array if not already there
-               //The most recently used way should always be at the front of the array
-               if((cache.length > 1) && (i != 0)) {
-                  CacheEntry[] tempRow = cache[0][index];
-                  cache[0][index] = cache[i][index];
-                  
-                  for(int j=1; j<cache.length; j++) {
-                     cache[j][index] = tempRow;
-                     
-                     if(j < (cache.length-1)) {
-                        tempRow = cache[j+1][index];
+               notFound = false;
+               boolean innerFound = false;
+               for (int j = 0; j < mapping; j++) {
+                  if (cache[1][index][j] == i) {
+                     innerFound = true;
+                     for (int k = j; k < mapping - 1; k++) {
+                        cache[1][index][k] = cache[1][index][k+1];
                      }
+                     break;
                   }
                }
-               break outerLoop;
+               // This LRU order, if the order was incorrect it needs to be
+               // updated
+               if (!innerFound) {
+                  for (int k = 0; k < mapping - 1; k++) {
+                     cache[1][index][k] = cache[1][index][k+1];
+                  }
+               }
+               // Makes the most recently used tag first in the lru array
+               cache[1][index][mapping - 1] = i;
+               break;
             }
          }
-      }
-      
-      //No hit, Update the cache
-      if(!found) {
-         CacheEntry[] tempRow = cache[0][index];
-         fillRow(0, index, blockOffset, tag, address);
-         
-         for(int j=1; j<cache.length; j++) {
-            cache[j][index] = tempRow;
-            
-            if(j < (cache.length-1)) {
-               tempRow = cache[j+1][index];
+         if (notFound) {
+            cache[0][index][cache[1][index][0]] = tag;
+            int save = cache[1][index][0];
+            for (int i = 0; i < mapping - 1; i++) {
+               cache[1][index][i] = cache[1][index][i+1];
             }
+            cache[1][index][mapping-1] = save;
          }
       }
-      
-      //Uncomment these for debugging
-   //   System.out.println("Mod Index: " + index + " Hits: " + hits);
-   //   printCache();
-     
+      printResults(cacheSize, mapping, blockLength);
+      cacheNumber++;
    }
-   
-   //Fill a single way
-   private static void fillRow(int mapping, int index, int blockOffset, int tag, int address) {
-      cache[mapping][index][blockOffset] = new CacheEntry(tag);
-      
-      int tempAddress = address;
-      for(int i=(blockOffset+1); i<cache[mapping][index].length; i++) {
-         tempAddress = tempAddress + 1;
-         cache[mapping][index][i] = new CacheEntry(tempAddress >>> (indexLength + blockOffsetLength + 2));
-      }
-      
-      tempAddress = address;
-      for(int i=(blockOffset-1); i>-1; i--) {
-         tempAddress = tempAddress - 1;
-         cache[mapping][index][i] = new CacheEntry(tempAddress >>> (indexLength + blockOffsetLength + 2));
-      }
-   }
-   
-   //Convert to a binary string of length "size"
-   private static String intToBinaryString(Integer integer, int size) {      
-      String binaryString = Integer.toBinaryString(integer);
-      
-      while(binaryString.length() != size) {
-         binaryString = "0" + binaryString;
-      }
 
-      return binaryString;
+   private static void setup(int cacheLength, int blockLength, int mapping, boolean associative) {
+      // Use a different setup for set associative runs
+      cache = new int[mapping][cacheLength][blockLength];
+      hits = 0;
+      totalAddresses = 0;
+      if (associative) {
+         // Fills in the order of the LRU
+         for (int i = 0; i < cacheLength; i++) {
+            for (int j = 0; j < blockLength; j++) {
+               cache[1][i][j] = j;
+            }
+         }
+      }
    }
-   
+
    private static void printResults(int cacheSize, int associativity, int blockSize) {
       double hitRate = ((double)hits/(double)totalAddresses * 100);
-
-      String output = 
-         "Cache #" + cacheNumber + "\n" +
-         "Cache Size: " + cacheSize + "B Associativity: " + associativity + " Block size: " + blockSize + "\n" +
-         "Hits: " + hits + " Hit Rate: " + new DecimalFormat("##.##").format(hitRate) + "%\n" + 
-         "---------------------------";
-      
+      String output = String.format("Cache # %d\nCache size: %dB\tAssociativity: %d\tBlock size: %d\nHits: %d\tHit Rate: %.2f%%\n---------------------------",
+            cacheNumber, cacheSize, associativity, blockSize, hits, hitRate);
       System.out.println(output);
    }
-   
-   //Just for debugging. Only prints nonzero cache entries
-   private static void printCache() {
-      int q = 0;
-      for (CacheEntry[] row : cache[0])
-      {
-         if(row[0].valid) {
-            System.out.print(q + ": " + Arrays.toString(row));
-                        
-            for(int i=1; i<cache.length; i++) {
-               System.out.print(" " + Arrays.toString(cache[i][q]));
-            }
-            
-            System.out.print("\n");
-         }
-         q++;  
-      }
-   }
-   
-   private static class CacheEntry {
-      int value = 0; 
-      boolean valid = false;
-      
-      public CacheEntry() {
-         this.value = 0;
-         this.valid = false;
-      }
-      
-      public CacheEntry(int value) {
-         this.value = value;
-         this.valid = true;
-      }
-      
-      public String toString() {
-         return String.valueOf(value);
-      }
-   }
-
 }

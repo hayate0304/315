@@ -1,0 +1,28 @@
+Cache #1
+Cache size: 2048B	Associativity: 1	Block size: 1
+Hits: 4087830	Hit Rate: 81.76%
+---------------------------
+Cache #2
+Cache size: 2048B	Associativity: 1	Block size: 2
+Hits: 4200599	Hit Rate: 84.01%
+---------------------------
+Cache #3
+Cache size: 2048B	Associativity: 1	Block size: 4
+Hits: 4462320	Hit Rate: 89.25%
+---------------------------
+Cache #4
+Cache size: 2048B	Associativity: 2	Block size: 1
+Hits: 4233328	Hit Rate: 84.67%
+---------------------------
+Cache #5
+Cache size: 2048B	Associativity: 4	Block size: 1
+Hits: 4261503	Hit Rate: 85.23%
+---------------------------
+Cache #6
+Cache size: 2048B	Associativity: 4	Block size: 4
+Hits: 4597437	Hit Rate: 91.95%
+---------------------------
+Cache #7
+Cache size: 4096B	Associativity: 1	Block size: 1
+Hits: 4463137	Hit Rate: 89.26%
+---------------------------
